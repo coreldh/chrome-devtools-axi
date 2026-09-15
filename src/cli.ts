@@ -22,7 +22,7 @@ import { getSuggestions } from "./suggestions.js";
 import { installHooksOrThrow } from "./hooks.js";
 import { parsePagesList } from "./pages.js";
 import { overlaySessionSelected } from "./selected-page.js";
-import { resolveOutputPath, resolveScreenshotOutputPath } from "./paths.js";
+import { resolveOutputPath } from "./paths.js";
 import { VERSION } from "./version.js";
 import {
   captureFreshSnapshot,
@@ -627,6 +627,20 @@ export function formatScreenshotOutput(filePath: string): string {
   return encode({ screenshot: filePath });
 }
 
+function parseScreenshotOutputPath(result: string): string {
+  const line = result
+    .split(/\r?\n/)
+    .find((candidate) => candidate.startsWith("Saved screenshot to "));
+  const match = line?.match(/^Saved screenshot to (.+)\.\s*$/);
+  if (!match) {
+    throw new CdpError(
+      "chrome-devtools-mcp did not report a saved screenshot path",
+      "BROWSER_ERROR",
+    );
+  }
+  return match[1];
+}
+
 /** Format raw MCP text result as AXI output: labeled block + truncation + suggestions. */
 export function formatMcpResult(
   label: string,
@@ -1069,14 +1083,14 @@ async function handleScreenshot(args: string[]): Promise<string> {
     ]);
   }
 
-  const filePath = resolveScreenshotOutputPath(parsed.filePath, parsed.format);
+  const filePath = resolveOutputPath(parsed.filePath);
   const toolArgs: Record<string, unknown> = { filePath };
   if (parsed.uid) toolArgs.uid = await parseUidFresh(parsed.uid);
   if (parsed.fullPage) toolArgs.fullPage = true;
   if (parsed.format) toolArgs.format = parsed.format;
 
-  await callTool("take_screenshot", toolArgs);
-  return formatScreenshotOutput(filePath);
+  const result = await callTool("take_screenshot", toolArgs);
+  return formatScreenshotOutput(parseScreenshotOutputPath(result));
 }
 
 async function handleClick(args: string[], full: boolean): Promise<string> {
