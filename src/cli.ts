@@ -22,7 +22,7 @@ import { getSuggestions } from "./suggestions.js";
 import { installHooksOrThrow } from "./hooks.js";
 import { parsePagesList } from "./pages.js";
 import { overlaySessionSelected } from "./selected-page.js";
-import { resolveOutputPath } from "./paths.js";
+import { resolveOutputPath, resolveScreenshotOutputPath } from "./paths.js";
 import { VERSION } from "./version.js";
 import {
   captureFreshSnapshot,
@@ -1069,7 +1069,7 @@ async function handleScreenshot(args: string[]): Promise<string> {
     ]);
   }
 
-  const filePath = resolveOutputPath(parsed.filePath);
+  const filePath = resolveScreenshotOutputPath(parsed.filePath, parsed.format);
   const toolArgs: Record<string, unknown> = { filePath };
   if (parsed.uid) toolArgs.uid = await parseUidFresh(parsed.uid);
   if (parsed.fullPage) toolArgs.fullPage = true;
