@@ -344,6 +344,26 @@ describe("main", () => {
     expect(String(write.mock.calls[0]?.[0])).toContain(expected);
   });
 
+  it("fails when MCP does not report a saved screenshot path", async () => {
+    const write = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+    callTool.mockResolvedValueOnce(
+      "Took a screenshot of the current page's viewport.",
+    );
+
+    await main(["screenshot", "./shot.png"]);
+
+    expect(callTool).toHaveBeenCalledWith("take_screenshot", {
+      filePath: resolve(process.cwd(), "./shot.png"),
+    });
+    expect(process.exitCode).toBe(1);
+    expect(decode(String(write.mock.calls[0]?.[0]))).toEqual({
+      error: "chrome-devtools-mcp did not report a saved screenshot path",
+      code: "BROWSER_ERROR",
+    });
+  });
+
   it.each([
     { format: undefined, input: "shot.png", output: "shot.webp" },
     { format: "jpeg", input: "shot.webp", output: "shot.jpeg" },
