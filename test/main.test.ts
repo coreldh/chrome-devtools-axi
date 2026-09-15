@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AxiError } from "axi-sdk-js";
+import { decode } from "@toon-format/toon";
 
 const { callTool } = vi.hoisted(() => ({
   callTool: vi.fn(),
@@ -353,6 +354,7 @@ describe("main", () => {
     { format: undefined, input: "shot.png", output: "shot.webp" },
     { format: "jpeg", input: "shot.webp", output: "shot.jpeg" },
     { format: "webp", input: "shot.jpeg", output: "shot.webp" },
+    { format: undefined, input: "shot\nname.png", output: "shot\nname.webp" },
   ])(
     "reports the canonical MCP saved path for format $format",
     async ({ format, input, output }) => {
@@ -382,13 +384,15 @@ describe("main", () => {
         await main(argv);
 
         const requested = resolve(directory, "linked", input);
-        const written = join(targetDirectory, output);
+        const written = join(realpathSync(linkedDirectory), output);
         expect(existsSync(written)).toBe(true);
         expect(callTool).toHaveBeenCalledWith("take_screenshot", {
           filePath: requested,
           ...(format ? { format } : {}),
         });
-        expect(String(write.mock.calls[0]?.[0])).toContain(written);
+        expect(decode(String(write.mock.calls[0]?.[0]))).toEqual({
+          screenshot: written,
+        });
       } finally {
         rmSync(directory, { recursive: true, force: true });
       }
