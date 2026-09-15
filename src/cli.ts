@@ -628,9 +628,7 @@ export function formatScreenshotOutput(filePath: string): string {
 }
 
 function parseScreenshotOutputPath(result: string): string {
-  const match = result.match(
-    /(?:^|\n)Saved screenshot to ([\s\S]+)\.\s*$/,
-  );
+  const match = result.match(/(?:^|\n)Saved screenshot to ([\s\S]+)\.\s*$/);
   if (!match) {
     throw new CdpError(
       "chrome-devtools-mcp did not report a saved screenshot path",

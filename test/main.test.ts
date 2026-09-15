@@ -333,9 +333,7 @@ describe("main", () => {
     const write = vi
       .spyOn(process.stdout, "write")
       .mockImplementation(() => true);
-    callTool.mockResolvedValueOnce(
-      "Saved screenshot to /caller/dir/shot.png.",
-    );
+    callTool.mockResolvedValueOnce("Saved screenshot to /caller/dir/shot.png.");
 
     await main(["screenshot", "./shot.png"]);
 
