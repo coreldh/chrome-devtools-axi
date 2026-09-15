@@ -180,11 +180,7 @@ describe("main", () => {
           )
           .mockResolvedValue("");
       } else {
-        callTool.mockResolvedValue(
-          tool === "take_screenshot"
-            ? `Saved screenshot to ${(args as { filePath: string }).filePath}.`
-            : "",
-        );
+        callTool.mockResolvedValue("");
       }
 
       await main(argv);
