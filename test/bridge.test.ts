@@ -828,39 +828,62 @@ describe("resolveTransport / createTransport", () => {
 
 describe("detectGlobalMcpPath", () => {
   it("returns the Windows npm global path without a lib segment", () => {
+    const prefix = join("opt", "npm");
+    const expected = join(
+      prefix,
+      "node_modules",
+      "chrome-devtools-mcp",
+      "build",
+      "src",
+      "bin",
+      "chrome-devtools-mcp.js",
+    );
     const probe = {
-      existsSync: (path: string) =>
-        path ===
-        "/opt/npm/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js",
-      getNpmPrefix: () => "/opt/npm",
+      existsSync: (path: string) => path === expected,
+      getNpmPrefix: () => prefix,
     };
 
-    expect(detectGlobalMcpPath(probe)).toBe(
-      "/opt/npm/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js",
-    );
+    expect(detectGlobalMcpPath(probe)).toBe(expected);
   });
 
   it("returns the POSIX npm global path with a lib segment", () => {
+    const prefix = join("opt", "npm");
+    const expected = join(
+      prefix,
+      "lib",
+      "node_modules",
+      "chrome-devtools-mcp",
+      "build",
+      "src",
+      "bin",
+      "chrome-devtools-mcp.js",
+    );
     const probe = {
-      existsSync: (path: string) =>
-        path ===
-        "/opt/npm/lib/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js",
-      getNpmPrefix: () => "/opt/npm",
+      existsSync: (path: string) => path === expected,
+      getNpmPrefix: () => prefix,
     };
 
-    expect(detectGlobalMcpPath(probe)).toBe(
-      "/opt/npm/lib/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js",
-    );
+    expect(detectGlobalMcpPath(probe)).toBe(expected);
   });
 
   it("prefers the POSIX global path when both layouts exist", () => {
+    const prefix = join("opt", "npm");
     const probe = {
       existsSync: () => true,
-      getNpmPrefix: () => "/opt/npm",
+      getNpmPrefix: () => prefix,
     };
 
     expect(detectGlobalMcpPath(probe)).toBe(
-      "/opt/npm/lib/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js",
+      join(
+        prefix,
+        "lib",
+        "node_modules",
+        "chrome-devtools-mcp",
+        "build",
+        "src",
+        "bin",
+        "chrome-devtools-mcp.js",
+      ),
     );
   });
 
