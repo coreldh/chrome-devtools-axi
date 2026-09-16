@@ -853,6 +853,17 @@ describe("detectGlobalMcpPath", () => {
     );
   });
 
+  it("prefers the POSIX global path when both layouts exist", () => {
+    const probe = {
+      existsSync: () => true,
+      getNpmPrefix: () => "/opt/npm",
+    };
+
+    expect(detectGlobalMcpPath(probe)).toBe(
+      "/opt/npm/lib/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js",
+    );
+  });
+
   it("returns null when the file is missing", () => {
     const probe = {
       existsSync: () => false,

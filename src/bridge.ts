@@ -805,8 +805,8 @@ export function detectGlobalMcpPath(
     "chrome-devtools-mcp.js",
   ];
   const candidates = [
-    join(prefix, ...packagePath),
     join(prefix, "lib", ...packagePath),
+    join(prefix, ...packagePath),
   ];
   for (const candidate of candidates) {
     if (probe.existsSync(candidate)) return candidate;
