@@ -827,7 +827,20 @@ describe("resolveTransport / createTransport", () => {
 });
 
 describe("detectGlobalMcpPath", () => {
-  it("returns the canonical MCP path when npm prefix + the file both exist", () => {
+  it("returns the Windows npm global path without a lib segment", () => {
+    const probe = {
+      existsSync: (path: string) =>
+        path ===
+        "/opt/npm/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js",
+      getNpmPrefix: () => "/opt/npm",
+    };
+
+    expect(detectGlobalMcpPath(probe)).toBe(
+      "/opt/npm/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js",
+    );
+  });
+
+  it("returns the POSIX npm global path with a lib segment", () => {
     const probe = {
       existsSync: (path: string) =>
         path ===
