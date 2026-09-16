@@ -1,8 +1,17 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AxiError } from "axi-sdk-js";
+import { decode } from "@toon-format/toon";
 
 const { callTool } = vi.hoisted(() => ({
   callTool: vi.fn(),
@@ -218,7 +227,11 @@ describe("main", () => {
           )
           .mockResolvedValue("");
       } else {
-        callTool.mockResolvedValue("");
+        callTool.mockResolvedValue(
+          tool === "take_screenshot"
+            ? `Saved screenshot to ${(args as { filePath: string }).filePath}.`
+            : "",
+        );
       }
 
       await main(argv);
@@ -235,7 +248,9 @@ describe("main", () => {
     const write = vi
       .spyOn(process.stdout, "write")
       .mockImplementation(() => true);
-    callTool.mockResolvedValueOnce("");
+    callTool.mockResolvedValueOnce(
+      `Saved screenshot to ${resolve(process.cwd(), "./shot.png")}.`,
+    );
 
     await main(["screenshot", "./shot.png", "--full-page"]);
 
@@ -318,7 +333,7 @@ describe("main", () => {
     const write = vi
       .spyOn(process.stdout, "write")
       .mockImplementation(() => true);
-    callTool.mockResolvedValueOnce("");
+    callTool.mockResolvedValueOnce("Saved screenshot to /caller/dir/shot.png.");
 
     await main(["screenshot", "./shot.png"]);
 
@@ -329,12 +344,81 @@ describe("main", () => {
     expect(String(write.mock.calls[0]?.[0])).toContain(expected);
   });
 
+  it("fails when MCP does not report a saved screenshot path", async () => {
+    const write = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+    callTool.mockResolvedValueOnce(
+      "Took a screenshot of the current page's viewport.",
+    );
+
+    await main(["screenshot", "./shot.png"]);
+
+    expect(callTool).toHaveBeenCalledWith("take_screenshot", {
+      filePath: resolve(process.cwd(), "./shot.png"),
+    });
+    expect(process.exitCode).toBe(1);
+    expect(decode(String(write.mock.calls[0]?.[0]))).toEqual({
+      error: "chrome-devtools-mcp did not report a saved screenshot path",
+      code: "BROWSER_ERROR",
+    });
+  });
+
+  it.each([
+    { format: undefined, input: "shot.png", output: "shot.webp" },
+    { format: "jpeg", input: "shot.webp", output: "shot.jpeg" },
+    { format: "webp", input: "shot.jpeg", output: "shot.webp" },
+    { format: undefined, input: "shot\nname.png", output: "shot\nname.webp" },
+  ])(
+    "reports the canonical MCP saved path for format $format",
+    async ({ format, input, output }) => {
+      const directory = mkdtempSync(
+        join(tmpdir(), "chrome-devtools-axi-shot-"),
+      );
+      try {
+        const targetDirectory = join(directory, "target");
+        const linkedDirectory = join(directory, "linked");
+        mkdirSync(targetDirectory);
+        symlinkSync(targetDirectory, linkedDirectory);
+        vi.spyOn(process, "cwd").mockReturnValue(directory);
+        const write = vi
+          .spyOn(process.stdout, "write")
+          .mockImplementation(() => true);
+        callTool.mockImplementationOnce(async (tool, args) => {
+          expect(tool).toBe("take_screenshot");
+          const requested = (args as { filePath: string }).filePath;
+          expect(requested).toBe(resolve(directory, "linked", input));
+          const written = join(realpathSync(linkedDirectory), output);
+          writeFileSync(written, "fake-screenshot");
+          return `Took a screenshot of the current page's viewport.\nSaved screenshot to ${written}.`;
+        });
+
+        const argv = ["screenshot", join("linked", input)];
+        if (format) argv.push("--format", format);
+        await main(argv);
+
+        const requested = resolve(directory, "linked", input);
+        const written = join(realpathSync(linkedDirectory), output);
+        expect(existsSync(written)).toBe(true);
+        expect(callTool).toHaveBeenCalledWith("take_screenshot", {
+          filePath: requested,
+          ...(format ? { format } : {}),
+        });
+        expect(decode(String(write.mock.calls[0]?.[0]))).toEqual({
+          screenshot: written,
+        });
+      } finally {
+        rmSync(directory, { recursive: true, force: true });
+      }
+    },
+  );
+
   it("passes absolute screenshot paths through unchanged", async () => {
     vi.spyOn(process, "cwd").mockReturnValue("/caller/dir");
     const write = vi
       .spyOn(process.stdout, "write")
       .mockImplementation(() => true);
-    callTool.mockResolvedValueOnce("");
+    callTool.mockResolvedValueOnce("Saved screenshot to /tmp/shot.png.");
 
     await main(["screenshot", "/tmp/shot.png"]);
 

@@ -627,6 +627,17 @@ export function formatScreenshotOutput(filePath: string): string {
   return encode({ screenshot: filePath });
 }
 
+function parseScreenshotOutputPath(result: string): string {
+  const match = result.match(/(?:^|\n)Saved screenshot to ([\s\S]+)\.\s*$/);
+  if (!match) {
+    throw new CdpError(
+      "chrome-devtools-mcp did not report a saved screenshot path",
+      "BROWSER_ERROR",
+    );
+  }
+  return match[1];
+}
+
 /** Format raw MCP text result as AXI output: labeled block + truncation + suggestions. */
 export function formatMcpResult(
   label: string,
@@ -1075,8 +1086,8 @@ async function handleScreenshot(args: string[]): Promise<string> {
   if (parsed.fullPage) toolArgs.fullPage = true;
   if (parsed.format) toolArgs.format = parsed.format;
 
-  await callTool("take_screenshot", toolArgs);
-  return formatScreenshotOutput(filePath);
+  const result = await callTool("take_screenshot", toolArgs);
+  return formatScreenshotOutput(parseScreenshotOutputPath(result));
 }
 
 async function handleClick(args: string[], full: boolean): Promise<string> {
